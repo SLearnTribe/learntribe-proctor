@@ -8,3 +8,7 @@ React and flask app
 #
 # To run backend
 > python app.py
+#
+#
+# Bring up docker for flask
+> docker compose up
