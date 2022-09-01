@@ -1,8 +1,6 @@
 from flask import Flask, request
 from flask_cors import CORS
 import json
-from face_rec import FaceRec, rahul
-from PIL import Image
 import base64
 import cv2
 import numpy as np
@@ -24,7 +22,6 @@ def api():
             npimg = np.fromstring(img, dtype=np.uint8); 
             frame = cv2.imdecode(npimg, 1)
 
-            # return bs64 
             path="./harrcasscade.xml"
             face_cascade=cv2.CascadeClassifier(path)
             # class_id=0
@@ -80,4 +77,4 @@ def api():
 	# return resp
 
 if __name__ == '__main__':
-	app.run()
+	app.run(host='0.0.0.0',port=5000,debug=True)
