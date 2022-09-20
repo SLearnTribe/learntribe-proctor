@@ -15,8 +15,8 @@ class PgsqlConn:
         try:
             self.cursor.execute(sql)
             self.conn.commit()
-            data = obj.cursor.fetchone()
-            print(data)
+            # data = obj.cursor.fetchone()
+            # print(data)
             return True
         except:
             return False
@@ -58,7 +58,7 @@ class PgsqlConn:
 
 
 myDb={
-    'db':'keycloak',
+    'db':'rj',
     'user':'keycloak',
     'password':'password',
     'host':'127.0.0.1',
@@ -77,7 +77,7 @@ myValues=[["abc123","1"]]
 
 obj=PgsqlConn(myDb)
 # obj.createDb("rj")
-# obj.createTable(myTable)
+obj.createTable(myTable)
 obj.insertTable(myTable,myValues)
 
 '''CREATING STRING FROM ATTRIBUTES
