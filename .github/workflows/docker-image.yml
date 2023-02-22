@@ -1,0 +1,28 @@
+name: Proctoring
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+
+    - name: Build the Docker image
+      run: |
+          docker build -t sb-proc:latest .
+
+    - name: Publish the Docker image
+      run: |
+        echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u "smilebat96" --password-stdin
+        docker tag sb-proc:latest smilebat96/sb-proc:latest
+        docker push smilebat96/sb-proc:latest
