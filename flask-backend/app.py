@@ -4,77 +4,89 @@ import json
 import base64
 import cv2
 import numpy as np
+import consul
+import uuid
+import socket
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/proc": {"origins": ["http://www.smilebat.xyz", "http://localhost:3000"]}})
+consul_client = consul.Consul(host="38.242.132.44", port=8500)
+service_id = f"proctoring_{str(uuid.uuid4())}"
 
-@app.route('/api', methods=['POST'])
+
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
+
+
+def register_service_with_consul(port):
+    consul_client.agent.service.register(
+        name="sb-proc",
+        service_id=service_id,
+        address="localhost/proc",
+        port=port,
+        check=consul.Check.http("localhost/health", port, "30s")
+    )
+
+
+def deregister_service_with_consul():
+    consul_client.agent.service.deregister(service_id)
+
+
+@app.route("/health", methods=['GET'])
+def health_check():
+    health_check_is_successful = True
+    if health_check_is_successful:
+        return {"status": "ok"}, 200
+    else:
+        return {"status": "not ok"}, 500
+
+
+@app.route('/proc', methods=['POST'])
 def api():
-    data = request.get_json()
+    image_list = request.get_json()['data']
+    x, y, z = 0, 0, 0
 
-    if data:
-
-        bs64=data['data'].split(',')[1]
-        print(data['name'])
-
+    if image_list:
+        # print(len(image_list))
         try:
-            img = base64.b64decode(bs64); 
-            npimg = np.fromstring(img, dtype=np.uint8); 
-            frame = cv2.imdecode(npimg, 1)
+            for image in image_list:
+                bs64 = image.split(',')[1]
+                img = base64.b64decode(bs64);
+                npimg = np.fromstring(img, dtype=np.uint8);
+                frame = cv2.imdecode(npimg, 1)
 
-            path="./harrcasscade.xml"
-            face_cascade=cv2.CascadeClassifier(path)
-            # class_id=0
-            # face_section =np.zeros((100,100),dtype='uint8')
-            # ret , frame = capture.read()
-            # frame=data['data']
-            # if ret == False:
-            #     return "Camera not opened"
-            gray_frame=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
-            faces = face_cascade.detectMultiScale(gray_frame,1.3,5)
-            faces = sorted(faces,key = lambda f:f[2]*f[3])
-            # for face in faces[-1:]:
-            #     x,y,w,h = face
-            #     offset = 10
-            #     face_section = gray_frame[y-offset:y+h+offset,x-offset:w+x+offset]
-            #     face_section = cv2.resize(face_section,(100,100))
-            #     cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),10)
-            if(len(faces)==1):
-                return 'Noice'
-            elif(len(faces)>1):
-                return 'Multiple faces detected'
-            else:
-                return 'Alert: No face detected' 
-        except:
-            return 'Error'
-    # cv2.imshow("camera", frame)
-    # capture.release()
-    # cv2.destroyAllWindows()
+                path = "./harrcasscade.xml"
+                face_cascade = cv2.CascadeClassifier(path)
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                faces = face_cascade.detectMultiScale(gray_frame, 1.3, 5)
+                faces = sorted(faces, key=lambda f: f[2] * f[3])
+                if len(faces) == 1:
+                    # return 'Noice'
+                    x += 1
+                elif len(faces) > 1:
+                    # return 'Multiple faces detected'
+                    y += 1
+                else:
+                    # return 'Alert: No face detected'
+                    z += 1
+                if y > 3 or z > 3:
+                    return 'Faulty User\n' + f'good={x}, many={y}, bad={z}'
+            return f'good={x}, many={y}, bad={z}'
 
-	# data = request.get_json()
-	# resp = 'Nobody'
-	# directory = './stranger'
-	# if data:
-	# 	if os.path.exists(directory):
-	# 		shutil.rmtree(directory)
+        except Exception as ex:
+            return f'Error :{ex}'
 
-	# 	if not os.path.exists(directory):
-	# 		try:
-	# 			os.mkdir(directory)
-	# 			time.sleep(1)
-	# 			result = data['data']
-	# 			b = bytes(result, 'utf-8')
-	# 			image = b[b.find(b'/9'):]
-	# 			im = Image.open(io.BytesIO(base64.b64decode(image)))
-	# 			im.save(directory+'/stranger.jpeg')
-
-	# 			if rahul.recognize_faces() == 'Rahul':
-	# 				resp = 'Rahul'
-	# 			else:
-	# 				resp = 'Nobody'
-	# 		except:
-	# 			pass
-	# return resp
 
 if __name__ == '__main__':
-	app.run(host='0.0.0.0',port=5000,debug=True)
+    try:
+        port = get_free_port()
+        print(f"RJ : {port}")
+        register_service_with_consul(port)
+        app.run(port=port, debug=True, use_reloader=False)
+    except Exception as e:
+        print(f"Exception : {e}")
+    finally:
+        deregister_service_with_consul()

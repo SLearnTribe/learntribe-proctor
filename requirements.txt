@@ -1,0 +1,5 @@
+tensorflow
+numpy
+opencv_python
+dlib
+cmake

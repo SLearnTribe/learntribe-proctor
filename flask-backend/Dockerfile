@@ -2,7 +2,7 @@
 
 FROM python:3.8-slim-buster
 
-WORKDIR /flask-docker
+WORKDIR /proctoring
 
 COPY requirements.txt requirements.txt
 
