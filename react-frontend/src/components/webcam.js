@@ -20,7 +20,7 @@ const WebcamCapture = () => {
     if (images.length === 5) {
       console.log(images);
       axios
-        .post('http://192.168.43.75:8153/proc', { data: images, good: 0, many: 0, bad: 0 })
+        .post('http://127.0.0.1:8153/proc', { data: images, good: 0, many: 0, bad: 0 })
         .then((res) => {
           console.log(res.data);
           setStatus(res.data.message);

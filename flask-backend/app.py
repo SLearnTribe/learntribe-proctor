@@ -8,6 +8,7 @@ import numpy as np
 import consul
 import uuid
 import socket
+
 # from controllers import procReportController
 # from dataaccess.entity.procReport import *
 
@@ -73,9 +74,9 @@ def health_check():
 @app.route('/proc', methods=['POST'])
 def api():
     image_list = request.get_json()['data']
-    good = int(request.get_json()['good'])
-    many = int(request.get_json()['many'])
-    bad = int(request.get_json()['bad'])
+    good = int(request.get_json()['good']) if request.get_json()['good'] else 0
+    many = int(request.get_json()['many']) if request.get_json()['many'] else 0
+    bad = int(request.get_json()['bad']) if request.get_json()['bad'] else 0
     temp_good, temp_many, temp_bad = 0, 0, 0
 
     if image_list:
@@ -83,8 +84,11 @@ def api():
         size = len(image_list)
         try:
             for image in image_list:
-                # TODO : Handle empty image
-                bs64 = image.split(',')[1]
+                bs64 = None
+                if image is not None:
+                    bs64 = image.split(',')[1]
+                else:
+                    continue
                 img = base64.b64decode(bs64);
                 npimg = np.fromstring(img, dtype=np.uint8);
                 frame = cv2.imdecode(npimg, 1)
@@ -131,7 +135,7 @@ if __name__ == '__main__':
     try:
         host = socket.gethostname()
         port = get_free_port()
-        # port=8153
+        # port = 8153
         register_service_with_consul(host, port)
         app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
     except Exception as e:
