@@ -1,3 +1,4 @@
+import json
 import logging
 from flask import Flask, request
 from flask_cors import CORS
@@ -7,6 +8,8 @@ import numpy as np
 import consul
 import uuid
 import socket
+# from controllers import procReportController
+# from dataaccess.entity.procReport import *
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ['www.smilebat.xyz', 'http://localhost:3000'],
@@ -16,8 +19,14 @@ CORS(app, resources={r"/*": {"origins": ['www.smilebat.xyz', 'http://localhost:3
                                              'Origin',
                                              'Access-Control-Request-Headers'],
                              }})
-# consul_client = consul.Consul(host="consul", port=8500)
-consul_client = consul.Consul(host="www.smilebat.xyz", port=8500)
+
+# Format : sql://username:password@uri/db
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://keycloak:password@38.242.132.44:5432/inquisitve'
+# db.init_app(app)
+# ma.init_app(app)
+
+consul_client = consul.Consul(host="consul", port=8500)
+# consul_client = consul.Consul(host="www.smilebat.xyz", port=8500)
 service_id = f"sb-proc-{str(uuid.uuid4())}"
 logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger('sb-proc')
@@ -64,15 +73,16 @@ def health_check():
 @app.route('/proc', methods=['POST'])
 def api():
     image_list = request.get_json()['data']
-    x, y, z = 0, 0, 0
+    good = int(request.get_json()['good'])
+    many = int(request.get_json()['many'])
+    bad = int(request.get_json()['bad'])
+    temp_good, temp_many, temp_bad = 0, 0, 0
 
     if image_list:
         # print(len(image_list))
         size = len(image_list)
         try:
             for image in image_list:
-                # bs64 = None
-                # if ',' in image:
                 # TODO : Handle empty image
                 bs64 = image.split(',')[1]
                 img = base64.b64decode(bs64);
@@ -86,19 +96,35 @@ def api():
                 faces = sorted(faces, key=lambda f: f[2] * f[3])
                 if len(faces) == 1:
                     # return 'Noice'
-                    x += 1
+                    temp_good += 1
                 elif len(faces) > 1:
                     # return 'Multiple faces detected'
-                    y += 1
+                    temp_many += 1
                 else:
                     # return 'Alert: No face detected'
-                    z += 1
+                    temp_bad += 1
                 # if y > size/3 or z >3:
                 #     return 'Faulty User\n' + f'good={x}, many={y}, bad={z}'
-            return f'good={x}, many={y}, bad={z}'
+            # return f'good={good}, many={many}, bad={bad}'
+            logger.info(f'good={good}, many={many}, bad={bad}')
+            good += temp_good
+            many += temp_many
+            bad += temp_bad
+            message = ''
+            if temp_many != 0:
+                message = 'Multiple faces detected'
+            elif temp_bad > 2:
+                message = 'Look on the screen'
+            return json.dumps({'good': good,
+                               'many': many,
+                               'bad': bad,
+                               'message': message})
 
         except Exception as ex:
             return f'Error :{ex}'
+
+
+# procReportController.register(app, route_base='/proc')
 
 
 if __name__ == '__main__':

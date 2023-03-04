@@ -17,13 +17,13 @@ const WebcamCapture = () => {
     const imageSrc = webcamRef.current.getScreenshot();
     setImages(images.concat(imageSrc));
     console.log(images.length);
-    if (images.length === 12) {
+    if (images.length === 5) {
       console.log(images);
       axios
-        .post('http://127.0.0.1:5000/api', { data: images, name: name })
+        .post('http://192.168.43.75:8153/proc', { data: images, good: 0, many: 0, bad: 0 })
         .then((res) => {
-          console.log(res);
-          setStatus(res.data);
+          console.log(res.data);
+          setStatus(res.data.message);
           // console.log(res['data'])
         })
         .catch((error) => {
@@ -36,7 +36,7 @@ const WebcamCapture = () => {
   useEffect(() => {
     let interval = setInterval(() => {
       capture();
-    }, 5000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [capture]);
 
